@@ -1,5 +1,5 @@
 import { getAdminStats } from '@/lib/database'
-import { BookOpen, Users, CheckCircle, FileText } from 'lucide-react'
+import { BookOpen, Users, CheckCircle, FileText, FileUp } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function OverviewPage() {
@@ -68,7 +68,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <Link href="/dashboard/questions/new" className="card p-5 hover:shadow-md transition-shadow flex items-center gap-4">
           <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-primary-600" />
@@ -84,7 +84,16 @@ export default async function OverviewPage() {
           </div>
           <div>
             <div className="font-medium text-gray-900">Generate from Analysis</div>
-            <div className="text-sm text-gray-500">Upload analysis JSON → auto-generate candidates</div>
+            <div className="text-sm text-gray-500">Upload CSV → auto-generate candidates</div>
+          </div>
+        </Link>
+        <Link href="/dashboard/questions/import-pdf" className="card p-5 hover:shadow-md transition-shadow flex items-center gap-4">
+          <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+            <FileUp className="w-5 h-5 text-orange-600" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900">Import from PDF</div>
+            <div className="text-sm text-gray-500">Upload Q&amp;A PDF → identification questions</div>
           </div>
         </Link>
       </div>

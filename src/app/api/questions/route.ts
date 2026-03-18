@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category') ?? undefined
   const status = searchParams.get('status') // 'published' | 'draft' | null
   const source = searchParams.get('source') ?? undefined
+  const search = searchParams.get('search') ?? undefined
   const page = parseInt(searchParams.get('page') ?? '1', 10)
   const limit = 20
   const offset = (page - 1) * limit
@@ -22,8 +23,8 @@ export async function GET(req: NextRequest) {
   const isActive = status === 'published' ? true : status === 'draft' ? false : undefined
 
   const [questions, total] = await Promise.all([
-    getTrainingQuestions({ category, isActive, source, limit, offset }),
-    countTrainingQuestions({ category, isActive, source }),
+    getTrainingQuestions({ category, isActive, source, search, limit, offset }),
+    countTrainingQuestions({ category, isActive, source, search }),
   ])
 
   return NextResponse.json({ questions, total, page, totalPages: Math.ceil(total / limit) })

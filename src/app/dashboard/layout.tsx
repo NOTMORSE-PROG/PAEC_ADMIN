@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900">PAEC Admin</div>
+              <div className="text-sm font-bold text-gray-900">CBS Admin</div>
               <div className="text-[11px] text-gray-400">Training Manager</div>
             </div>
           </div>

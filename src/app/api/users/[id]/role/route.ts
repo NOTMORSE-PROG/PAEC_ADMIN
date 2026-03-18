@@ -8,15 +8,16 @@ async function requireAdmin() {
   return session
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdmin()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
   const { role } = await req.json()
   if (!['admin', 'student'].includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
   // Prevent self-demotion
-  if (params.id === session.user?.id && role !== 'admin') {
+  if (id === session.user?.id && role !== 'admin') {
     return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 })
   }
-  await setUserRole(params.id, role)
+  await setUserRole(id, role)
   return NextResponse.json({ ok: true })
 }

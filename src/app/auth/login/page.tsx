@@ -31,7 +31,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">PAEC Admin</h1>
+          <h1 className="text-2xl font-bold text-gray-900">CBS Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Admin access only</p>
         </div>
 

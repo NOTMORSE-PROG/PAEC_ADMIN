@@ -3,8 +3,8 @@ import './globals.css'
 import { Providers } from './providers'
 
 export const metadata: Metadata = {
-  title: 'PAEC Admin',
-  description: 'Admin panel for the PAEC training system',
+  title: 'CBS Admin',
+  description: 'Admin panel for the Corpus-Based System',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

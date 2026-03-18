@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(questions) || questions.length === 0) {
     return NextResponse.json({ error: 'questions array required' }, { status: 400 })
   }
-  if (questions.length > 20) {
-    return NextResponse.json({ error: 'Max 20 questions per bulk request' }, { status: 400 })
+  if (questions.length > 10) {
+    return NextResponse.json({ error: 'Max 10 questions per bulk request' }, { status: 400 })
   }
 
   const created = await bulkCreateTrainingQuestions(

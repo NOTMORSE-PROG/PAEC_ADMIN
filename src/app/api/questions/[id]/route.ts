@@ -8,23 +8,26 @@ async function requireAdmin() {
   return session
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const question = await getTrainingQuestionById(params.id)
+  const { id } = await params
+  const question = await getTrainingQuestionById(id)
   if (!question) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ question })
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
   const body = await req.json()
-  const updated = await updateTrainingQuestion(params.id, body)
+  const updated = await updateTrainingQuestion(id, body)
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ question: updated })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await deleteTrainingQuestion(params.id)
+  const { id } = await params
+  await deleteTrainingQuestion(id)
   return NextResponse.json({ ok: true })
 }

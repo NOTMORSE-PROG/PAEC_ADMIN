@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Plus, Search, Filter, CheckCircle, FileText, Trash2, Edit2, Loader2, BookOpen, RefreshCw } from 'lucide-react'
+import { Plus, Search, Filter, CheckCircle, FileText, Trash2, Edit2, Loader2, BookOpen, RefreshCw, FileUp } from 'lucide-react'
 
 interface Question {
   id: string
@@ -21,8 +21,8 @@ function questionPreview(q: Question): string {
   const d = q.question_data
   if (q.category === 'readback') return (d.incorrectReadback as string) ?? ''
   if (q.category === 'scenario') return (d.atcClearance as string) ?? ''
-  if (q.category === 'jumbled') return ((d.correctOrder as string[]) ?? []).join(' ')
-  if (q.category === 'pronunciation') return `${d.display} → ${d.correctPronunciation}`
+  if (q.category === 'jumbled') return (d.instruction as string) ?? ((d.correctOrder as string[]) ?? []).slice(0, 3).join(' ') + '…'
+  if (q.category === 'pronunciation') return d.type === 'question' ? (d.display as string) ?? '' : `"${d.display}" — which ICAO pronunciation is correct?`
   return JSON.stringify(d).slice(0, 80)
 }
 
@@ -34,6 +34,7 @@ export default function QuestionsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [category, setCategory] = useState(searchParams.get('category') ?? '')
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
@@ -43,11 +44,17 @@ export default function QuestionsPage() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1) }, 350)
+    return () => clearTimeout(t)
+  }, [search])
+
   const fetchQuestions = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
     if (category) params.set('category', category)
     if (status) params.set('status', status)
+    if (debouncedSearch) params.set('search', debouncedSearch)
     params.set('page', String(page))
     const res = await fetch(`/api/questions?${params}`)
     const data = await res.json()
@@ -56,7 +63,7 @@ export default function QuestionsPage() {
     setTotalPages(data.totalPages ?? 1)
     setLoading(false)
     setSelected(new Set())
-  }, [category, status, page])
+  }, [category, status, debouncedSearch, page])
 
   useEffect(() => { fetchQuestions() }, [fetchQuestions])
 
@@ -67,8 +74,10 @@ export default function QuestionsPage() {
 
   const bulkPublish = async (active: boolean) => {
     setBulkLoading(true)
-    await Promise.all(Array.from(selected).map(id => fetch(`/api/questions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: active }) })))
-    showToast(`${selected.size} question${selected.size !== 1 ? 's' : ''} ${active ? 'published' : 'unpublished'}`)
+    const results = await Promise.allSettled(Array.from(selected).map(id => fetch(`/api/questions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: active }) })))
+    const failed = results.filter(r => r.status === 'rejected').length
+    if (failed > 0) showToast(`${selected.size - failed} ${active ? 'published' : 'unpublished'}, ${failed} failed`)
+    else showToast(`${selected.size} question${selected.size !== 1 ? 's' : ''} ${active ? 'published' : 'unpublished'}`)
     setBulkLoading(false)
     fetchQuestions()
   }
@@ -76,9 +85,18 @@ export default function QuestionsPage() {
   const bulkDelete = async () => {
     if (!confirm(`Delete ${selected.size} question(s)? This cannot be undone.`)) return
     setBulkLoading(true)
-    await Promise.all(Array.from(selected).map(id => fetch(`/api/questions/${id}`, { method: 'DELETE' })))
-    showToast(`${selected.size} question(s) deleted`)
+    const results = await Promise.allSettled(Array.from(selected).map(id => fetch(`/api/questions/${id}`, { method: 'DELETE' })))
+    const failed = results.filter(r => r.status === 'rejected').length
+    if (failed > 0) showToast(`${selected.size - failed} deleted, ${failed} failed`)
+    else showToast(`${selected.size} question(s) deleted`)
     setBulkLoading(false)
+    fetchQuestions()
+  }
+
+  const deleteOne = async (q: Question) => {
+    if (!confirm(`Delete this question? This cannot be undone.`)) return
+    await fetch(`/api/questions/${q.id}`, { method: 'DELETE' })
+    showToast('Question deleted')
     fetchQuestions()
   }
 
@@ -87,8 +105,6 @@ export default function QuestionsPage() {
     showToast(`Question ${!q.is_active ? 'published' : 'unpublished'}`)
     fetchQuestions()
   }
-
-  const filtered = search ? questions.filter(q => questionPreview(q).toLowerCase().includes(search.toLowerCase())) : questions
 
   return (
     <div className="space-y-6">
@@ -105,6 +121,7 @@ export default function QuestionsPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/questions/from-analysis" className="btn-secondary">Generate from Analysis</Link>
+          <Link href="/dashboard/questions/import-pdf" className="btn-secondary"><FileUp className="w-4 h-4 mr-1" />Import PDF</Link>
           <Link href="/dashboard/questions/new" className="btn-primary"><Plus className="w-4 h-4 mr-1" />New Question</Link>
         </div>
       </div>
@@ -151,7 +168,7 @@ export default function QuestionsPage() {
           <div className="flex items-center justify-center py-16 text-gray-400">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />Loading questions...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : questions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <BookOpen className="w-10 h-10 mb-3" />
             <p className="font-medium">No questions found</p>
@@ -174,7 +191,7 @@ export default function QuestionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map(q => (
+              {questions.map(q => (
                 <tr key={q.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <input type="checkbox" checked={selected.has(q.id)} onChange={() => toggleSelect(q.id)} className="rounded" />
@@ -202,6 +219,9 @@ export default function QuestionsPage() {
                       <Link href={`/dashboard/questions/${q.id}`} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
                         <Edit2 className="w-3.5 h-3.5" />
                       </Link>
+                      <button onClick={() => deleteOne(q)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>

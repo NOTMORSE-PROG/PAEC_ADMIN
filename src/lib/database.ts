@@ -30,13 +30,14 @@ export interface User {
 
 // ── Questions ────────────────────────────────────────────────────────────────
 
-export async function getTrainingQuestions(opts?: { category?: string; isActive?: boolean; source?: string; limit?: number; offset?: number }) {
+export async function getTrainingQuestions(opts?: { category?: string; isActive?: boolean; source?: string; search?: string; limit?: number; offset?: number }) {
   const conditions: string[] = []
   const params: unknown[] = []
 
   if (opts?.category) { conditions.push(`category = $${params.length + 1}`); params.push(opts.category) }
   if (opts?.isActive !== undefined) { conditions.push(`is_active = $${params.length + 1}`); params.push(opts.isActive) }
   if (opts?.source) { conditions.push(`source = $${params.length + 1}`); params.push(opts.source) }
+  if (opts?.search) { conditions.push(`question_data::text ILIKE $${params.length + 1}`); params.push(`%${opts.search}%`) }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const limit = opts?.limit ?? 50
@@ -48,13 +49,14 @@ export async function getTrainingQuestions(opts?: { category?: string; isActive?
   )
 }
 
-export async function countTrainingQuestions(opts?: { category?: string; isActive?: boolean; source?: string }) {
+export async function countTrainingQuestions(opts?: { category?: string; isActive?: boolean; source?: string; search?: string }) {
   const conditions: string[] = []
   const params: unknown[] = []
 
   if (opts?.category) { conditions.push(`category = $${params.length + 1}`); params.push(opts.category) }
   if (opts?.isActive !== undefined) { conditions.push(`is_active = $${params.length + 1}`); params.push(opts.isActive) }
   if (opts?.source) { conditions.push(`source = $${params.length + 1}`); params.push(opts.source) }
+  if (opts?.search) { conditions.push(`question_data::text ILIKE $${params.length + 1}`); params.push(`%${opts.search}%`) }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const rows = await query<{ count: string }>(`SELECT COUNT(*) as count FROM training_questions ${where}`, params)
