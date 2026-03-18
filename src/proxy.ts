@@ -1,18 +1,32 @@
-import { auth } from '@/lib/auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-export default auth((req) => {
+/**
+ * Middleware — reads the JWT cookie directly via getToken() so the auth
+ * check never constructs a base URL and is not affected by AUTH_URL / NEXTAUTH_URL.
+ */
+export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const session = req.auth
 
-  if (pathname.startsWith('/dashboard')) {
-    if (!session) return NextResponse.redirect(new URL('/auth/login', req.url))
-    if ((session.user as { role?: string })?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/unauthorized', req.url))
-    }
+  if (!pathname.startsWith('/dashboard')) return NextResponse.next()
+
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+    cookieName: 'cbs-admin.session-token',
+  })
+
+  if (!token) {
+    const loginUrl = new URL('/auth/login', req.nextUrl.origin)
+    loginUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  if ((token.role as string) !== 'admin') {
+    return NextResponse.redirect(new URL('/unauthorized', req.nextUrl.origin))
   }
 
   return NextResponse.next()
-})
+}
 
 export const config = { matcher: ['/dashboard/:path*'] }
