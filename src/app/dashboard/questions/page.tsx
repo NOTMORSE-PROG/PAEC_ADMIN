@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Plus, Search, Filter, CheckCircle, FileText, Trash2, Edit2, Loader2, BookOpen, RefreshCw, FileUp } from 'lucide-react'
@@ -26,7 +26,7 @@ function questionPreview(q: Question): string {
   return JSON.stringify(d).slice(0, 80)
 }
 
-export default function QuestionsPage() {
+function QuestionsPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [questions, setQuestions] = useState<Question[]>([])
@@ -242,5 +242,13 @@ export default function QuestionsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function QuestionsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-16 text-gray-400"><Loader2 className="w-6 h-6 animate-spin mr-2" />Loading...</div>}>
+      <QuestionsPageInner />
+    </Suspense>
   )
 }
