@@ -276,7 +276,7 @@ export default function NewQuestionPage() {
       </div>
 
       <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
+        <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
           {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : <><Save className="w-4 h-4 mr-2" />Save Question</>}
         </button>
         <button onClick={() => handleSave(true)} disabled={saving} className="btn-secondary">
