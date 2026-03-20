@@ -178,22 +178,41 @@ export async function extractPdfText(file: File): Promise<string> {
     const content = await page.getTextContent()
     const items = content.items as Array<{ str: string; transform: number[] }>
 
-    const lineMap = new Map<number, string[]>()
+    // Group items by Y coordinate.
+    // Use 2-unit buckets (floor to nearest 2) to absorb small baseline differences
+    // between font metrics on the same visual line without merging separate lines.
+    const lineMap = new Map<number, Array<{ str: string; x: number }>>()
     for (const item of items) {
-      const y = Math.round(item.transform[5])
+      const y = Math.floor(item.transform[5] / 2) * 2
       if (!lineMap.has(y)) lineMap.set(y, [])
-      lineMap.get(y)!.push(item.str)
+      lineMap.get(y)!.push({ str: item.str, x: item.transform[4] })
     }
 
     const lines = [...lineMap.entries()]
-      .sort((a, b) => b[0] - a[0])
-      .map(([, parts]) => parts.join('').trim())
+      .sort((a, b) => b[0] - a[0])           // PDF Y increases upward → sort descending
+      .map(([, parts]) => {
+        // Sort items left → right by X, join with space, collapse multiple spaces.
+        // Joining with a space ensures words aren't concatenated even when PDF item
+        // boundaries fall mid-word.  Extra spaces from items that already have
+        // trailing/leading whitespace are collapsed afterward.
+        const sorted = [...parts].sort((a, b) => a.x - b.x)
+        return sorted.map(p => p.str).join(' ').trim().replace(/\s{2,}/g, ' ')
+      })
       .filter(Boolean)
 
     pageTexts.push(lines.join('\n'))
   }
 
-  return pageTexts.join('\n')
+  // Normalise common PDF typography artifacts that could confuse field regexes
+  const raw = pageTexts.join('\n')
+  return raw
+    .replace(/[\u2018\u2019]/g, "'")   // smart single quotes → '
+    .replace(/[\u201C\u201D]/g, '"')   // smart double quotes → "
+    .replace(/\u2013/g, '-')           // en-dash → hyphen
+    .replace(/\u2014/g, '-')           // em-dash → hyphen
+    .replace(/\u00A0/g, ' ')           // non-breaking space → space
+    .replace(/\uFB01/g, 'fi')          // fi ligature
+    .replace(/\uFB02/g, 'fl')          // fl ligature
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────────
@@ -249,6 +268,7 @@ export function getQualityWarnings(
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
+/** For pronunciation: inline block numbers ("1. What is...") */
 function splitIntoBlocks(rawLines: string[]): string[] {
   const fullText = rawLines.join('\n')
   return fullText
@@ -257,20 +277,57 @@ function splitIntoBlocks(rawLines: string[]): string[] {
     .filter(b => /^\d+[.)]/m.test(b))
 }
 
-/** Extract a labeled field value: "LABEL: value" or "LABEL: value\ncontinuation line" */
+/**
+ * For scenario / readback / jumbled: block numbers are standalone on their own line.
+ *
+ * Two guards prevent callsign flight numbers (e.g. "332.", "777.") from being
+ * mistaken for block boundaries when they wrap to the start of a new line:
+ *   1. The number must be ALONE on the line (nothing after the punctuation).
+ *   2. The number must be sequential (prev + 1), so "332" is rejected when
+ *      we are currently building block 2.
+ */
+function splitIntoBlocksStandalone(rawLines: string[]): string[] {
+  const blocks: string[] = []
+  let current: string[] = []
+  let lastBlockNum = 0
+
+  for (const line of rawLines) {
+    const m = line.match(/^(\d{1,3})[.)]\s*$/)  // standalone: only digits + punct
+    if (m) {
+      const num = parseInt(m[1])
+      if (num === lastBlockNum + 1) {
+        if (current.length > 0) blocks.push(current.join('\n'))
+        current = [line]
+        lastBlockNum = num
+        continue
+      }
+    }
+    current.push(line)
+  }
+  if (current.length > 0) blocks.push(current.join('\n'))
+  return blocks.filter(b => /^\d+[.)]/m.test(b))
+}
+
+/**
+ * Extract a labeled field value: "LABEL: value" or "LABEL: value\ncontinuation line"
+ *
+ * Continuation stops only when a new ALL-CAPS field label is detected (e.g. "ATC:",
+ * "CORRECT:", "HINTS:"). Mixed-case or lowercase lines — including wrapped callsign
+ * numbers like "332." or prose sentences — are always collected as continuation.
+ */
 function extractField(blockLines: string[], ...labels: string[]): string {
   const pattern = new RegExp(`^(?:${labels.join('|')})\\s*:\\s*(.*)`, 'i')
+  // Matches lines that look like a new field label: at least 2 uppercase chars before ":"
+  // e.g. "ATC:", "CORRECT:", "CALL-SIGN:", "FLIGHT PHASE:"
+  // Does NOT match lowercase prose like "Note:" or "The controller said:"
+  const labelRe = /^[A-Z][A-Z\s\-]{1,}\s*:/
+
   for (let i = 0; i < blockLines.length; i++) {
     const m = blockLines[i].match(pattern)
     if (m) {
       let value = m[1].trim()
-      // Collect continuation lines (lines that don't look like a new label or block number)
       let j = i + 1
-      while (
-        j < blockLines.length &&
-        !/^\w[\w\s]*\s*:/i.test(blockLines[j]) &&
-        !/^\d+[.)]/i.test(blockLines[j])
-      ) {
+      while (j < blockLines.length && !labelRe.test(blockLines[j])) {
         value += ' ' + blockLines[j].trim()
         j++
       }
@@ -336,18 +393,42 @@ function parsePronunciationQuestions(text: string): ParseResult {
 
     for (let i = choiceStartIdx; i < blockLines.length; i++) {
       const line = blockLines[i]
+
       const choiceMatch = line.match(/^([a-dA-D])[.)]\s*(.+)/)
       if (choiceMatch) {
-        choiceMap[choiceMatch[1].toLowerCase()] = choiceMatch[2].trim()
+        const letter = choiceMatch[1].toLowerCase()
+        let choiceText = choiceMatch[2].trim()
+        // Collect continuation lines for multi-line choices
+        while (
+          i + 1 < blockLines.length &&
+          !/^[a-dA-D][.)]\s/i.test(blockLines[i + 1]) &&
+          !isAnswerLine(blockLines[i + 1]) &&
+          !/^explanation\s*[:=]/i.test(blockLines[i + 1])
+        ) {
+          i++
+          choiceText += ' ' + blockLines[i].trim()
+        }
+        choiceMap[letter] = choiceText.trim()
         continue
       }
+
       if (isAnswerLine(line)) {
         const m = line.match(/[a-d]/i)
         if (m) correctLetter = m[0].toLowerCase()
         continue
       }
+
       if (/^explanation\s*[:=]/i.test(line)) {
         explanation = line.replace(/^explanation\s*[:=]\s*/i, '').trim()
+        // Collect continuation lines for multi-line explanations
+        while (
+          i + 1 < blockLines.length &&
+          !/^[a-dA-D][.)]\s/i.test(blockLines[i + 1]) &&
+          !isAnswerLine(blockLines[i + 1])
+        ) {
+          i++
+          explanation += ' ' + blockLines[i].trim()
+        }
         continue
       }
     }
@@ -412,11 +493,11 @@ function getPronunciationWarnings(
 function parseReadbackQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const blocks = splitIntoBlocks(rawLines)
+  const blocks = splitIntoBlocksStandalone(rawLines)
 
   if (blocks.length === 0) {
     errors.push(
-      'No questions found. Each question must start with a number followed by "." or ")" on its own line — e.g. "1." or "1."'
+      'No questions found. Each question must start with a number followed by "." or ")" on its own line — e.g. "1."'
     )
     return { questions: [], errors }
   }
@@ -429,20 +510,20 @@ function parseReadbackQuestions(text: string): ParseResult {
     if (!numMatch) continue
     const qNum = parseInt(numMatch[1])
 
-    const atcInstruction   = extractField(blockLines, 'ATC')
-    const incorrectReadback = extractField(blockLines, 'INCORRECT', 'INCORRECT READBACK')
-    const correctReadback  = extractField(blockLines, 'CORRECT', 'CORRECT READBACK')
-    const errorsRaw        = extractField(blockLines, 'ERRORS', 'ERROR')
-    const explanation      = extractField(blockLines, 'EXPLANATION', 'EXPLAIN')
+    const atcInstruction    = extractField(blockLines, 'ATC')
+    const incorrectReadback = extractField(blockLines, 'INCORRECT', 'INCORRECT READBACK', 'WRONG', 'PILOT ERROR', 'PILOT')
+    const correctReadback   = extractField(blockLines, 'CORRECT', 'CORRECT READBACK', 'EXPECTED')
+    const errorsRaw         = extractField(blockLines, 'ERRORS', 'ERROR')
+    const explanation       = extractField(blockLines, 'EXPLANATION', 'EXPLAIN', 'NOTE')
 
     const errors_arr = errorsRaw
       ? errorsRaw.split(/[,;]/).map(e => e.trim()).filter(Boolean)
       : []
 
     const blockErrors: string[] = []
-    if (!atcInstruction)   blockErrors.push(`Q${qNum}: Missing ATC field — add "ATC: <instruction>"`)
+    if (!atcInstruction)    blockErrors.push(`Q${qNum}: Missing ATC field — add "ATC: <instruction>"`)
     if (!incorrectReadback) blockErrors.push(`Q${qNum}: Missing INCORRECT field — add "INCORRECT: <readback>"`)
-    if (!correctReadback)  blockErrors.push(`Q${qNum}: Missing CORRECT field — add "CORRECT: <readback>"`)
+    if (!correctReadback)   blockErrors.push(`Q${qNum}: Missing CORRECT field — add "CORRECT: <readback>"`)
     errors.push(...blockErrors)
 
     const qd: Record<string, unknown> = {
@@ -466,10 +547,22 @@ function parseReadbackQuestions(text: string): ParseResult {
 
 // ── Scenario parser (labeled fields) ─────────────────────────────────────────
 
+/** Map any phase wording to the three values the training app recognises. */
+function normalisePhase(raw: string): 'departure' | 'approach' | 'ground' {
+  const s = raw.toLowerCase().trim()
+  if (/^(departure|takeoff|take.off|climb|initial climb|en.?route)/.test(s)) return 'departure'
+  if (/^(approach|arrival|descent|landing|final|ils|ils approach)/.test(s)) return 'approach'
+  if (/^(ground|taxi|ramp|gate|pushback|push.?back|parking)/.test(s)) return 'ground'
+  // Default: try partial match, else departure
+  if (s.includes('approach') || s.includes('descent') || s.includes('arrival')) return 'approach'
+  if (s.includes('ground') || s.includes('taxi') || s.includes('ramp')) return 'ground'
+  return 'departure'
+}
+
 function parseScenarioQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const blocks = splitIntoBlocks(rawLines)
+  const blocks = splitIntoBlocksStandalone(rawLines)
 
   if (blocks.length === 0) {
     errors.push(
@@ -486,13 +579,15 @@ function parseScenarioQuestions(text: string): ParseResult {
     if (!numMatch) continue
     const qNum = parseInt(numMatch[1])
 
-    const callSign      = extractField(blockLines, 'CALLSIGN', 'CALL SIGN', 'CALL-SIGN')
-    const flightPhase   = extractField(blockLines, 'PHASE', 'FLIGHT PHASE')
-    const aircraftType  = extractField(blockLines, 'AIRCRAFT', 'AIRCRAFT TYPE', 'TYPE')
-    const situation     = extractField(blockLines, 'SITUATION', 'CONTEXT', 'BACKGROUND')
-    const atcClearance  = extractField(blockLines, 'ATC', 'ATC CLEARANCE', 'CLEARANCE')
-    const correctResponse = extractField(blockLines, 'CORRECT', 'CORRECT RESPONSE', 'RESPONSE')
-    const hintsRaw      = extractField(blockLines, 'HINTS', 'HINT')
+    const callSign       = extractField(blockLines, 'CALLSIGN', 'CALL SIGN', 'CALL-SIGN', 'FLIGHT')
+    const flightPhaseRaw = extractField(blockLines, 'PHASE', 'FLIGHT PHASE', 'OPERATION', 'STAGE')
+    const aircraftType   = extractField(blockLines, 'AIRCRAFT', 'AIRCRAFT TYPE', 'A/C TYPE', 'PLANE')
+    const situation      = extractField(blockLines, 'SITUATION', 'CONTEXT', 'BACKGROUND', 'SCENARIO')
+    const atcClearance   = extractField(blockLines, 'ATC', 'ATC CLEARANCE', 'CLEARANCE', 'INSTRUCTION')
+    const correctResponse = extractField(blockLines, 'CORRECT', 'CORRECT RESPONSE', 'RESPONSE', 'ANSWER')
+    const hintsRaw       = extractField(blockLines, 'HINTS', 'HINT', 'TIPS', 'TIP', 'KEY ELEMENTS')
+
+    const flightPhase = flightPhaseRaw ? normalisePhase(flightPhaseRaw) : 'departure'
 
     const hints = hintsRaw
       ? hintsRaw.split(/[,;]/).map(h => h.trim()).filter(Boolean)
@@ -505,7 +600,7 @@ function parseScenarioQuestions(text: string): ParseResult {
 
     const qd: Record<string, unknown> = {
       callSign:       callSign || 'Unknown',
-      flightPhase:    flightPhase || 'departure',
+      flightPhase,
       aircraftType:   aircraftType || '',
       situation:      situation || '',
       atcClearance,
@@ -530,7 +625,7 @@ function parseScenarioQuestions(text: string): ParseResult {
 function parseJumbledQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const blocks = splitIntoBlocks(rawLines)
+  const blocks = splitIntoBlocksStandalone(rawLines)
 
   if (blocks.length === 0) {
     errors.push(
@@ -547,15 +642,15 @@ function parseJumbledQuestions(text: string): ParseResult {
     if (!numMatch) continue
     const qNum = parseInt(numMatch[1])
 
-    const instruction  = extractField(blockLines, 'INSTRUCTION', 'TASK')
-    const correctRaw   = extractField(blockLines, 'CORRECT', 'CORRECT ORDER', 'PHRASE')
-    const typeLabel    = extractField(blockLines, 'TYPE', 'CATEGORY')
+    const instruction = extractField(blockLines, 'INSTRUCTION', 'TASK', 'QUESTION', 'DIRECTIONS')
+    const correctRaw  = extractField(blockLines, 'CORRECT', 'CORRECT ORDER', 'PHRASE', 'ANSWER')
+    const typeLabel   = extractField(blockLines, 'TYPE', 'CATEGORY', 'KIND')
 
     const correctOrder = correctRaw.split(/\s+/).filter(Boolean)
 
     const blockErrors: string[] = []
-    if (!correctRaw)   blockErrors.push(`Q${qNum}: Missing CORRECT field — add "CORRECT: <words in order>"`)
-    if (!instruction)  blockErrors.push(`Q${qNum}: Missing INSTRUCTION field — add "INSTRUCTION: <task description>"`)
+    if (!correctRaw)  blockErrors.push(`Q${qNum}: Missing CORRECT field — add "CORRECT: <words in order>"`)
+    if (!instruction) blockErrors.push(`Q${qNum}: Missing INSTRUCTION field — add "INSTRUCTION: <task description>"`)
     errors.push(...blockErrors)
 
     const qd: Record<string, unknown> = {

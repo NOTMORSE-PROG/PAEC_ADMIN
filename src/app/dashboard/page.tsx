@@ -1,6 +1,7 @@
 import { getAdminStats } from '@/lib/database'
 import { BookOpen, Users, CheckCircle, FileText, FileUp } from 'lucide-react'
 import Link from 'next/link'
+import ScrollToTop from '@/components/ScrollToTop'
 
 export default async function OverviewPage() {
   const stats = await getAdminStats()
@@ -16,6 +17,7 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-8">
+      <ScrollToTop />
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Overview</h1>
         <p className="text-gray-500 text-sm">Training question pool status</p>

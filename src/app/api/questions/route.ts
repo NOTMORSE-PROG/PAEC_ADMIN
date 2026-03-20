@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const source = searchParams.get('source') ?? undefined
   const search = searchParams.get('search') ?? undefined
   const page = parseInt(searchParams.get('page') ?? '1', 10)
-  const limit = 20
+  const limit = parseInt(searchParams.get('limit') ?? '20', 10)
   const offset = (page - 1) * limit
 
   const isActive = status === 'published' ? true : status === 'draft' ? false : undefined
