@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Shield, User, Loader2, CheckCircle, RefreshCw } from 'lucide-react'
+import { Shield, User, Loader2, RefreshCw } from 'lucide-react'
 
 interface UserRow {
   id: string
@@ -15,10 +15,6 @@ interface UserRow {
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState('')
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -30,32 +26,8 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
-  const toggleRole = async (user: UserRow) => {
-    const newRole = user.role === 'admin' ? 'student' : 'admin'
-    setUpdatingId(user.id)
-    const res = await fetch(`/api/users/${user.id}/role`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: newRole }),
-    })
-    if (res.ok) {
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u))
-      showToast(`${user.name} is now a${newRole === 'admin' ? 'n admin' : ' student'}`)
-    } else {
-      const d = await res.json()
-      showToast(d.error ?? 'Failed to update role')
-    }
-    setUpdatingId(null)
-  }
-
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl shadow-lg flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-green-400" />{toast}
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
@@ -75,7 +47,8 @@ export default function UsersPage() {
             <p>No users found</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[540px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
@@ -83,7 +56,6 @@ export default function UsersPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Role</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Sessions</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase w-28">Joined</th>
-                <th className="w-32 px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -108,24 +80,11 @@ export default function UsersPage() {
                   <td className="px-5 py-4 text-sm text-gray-500">
                     {new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => toggleRole(user)}
-                      disabled={updatingId === user.id}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
-                        user.role === 'admin'
-                          ? 'border-red-200 text-red-600 hover:bg-red-50'
-                          : 'border-primary-200 text-primary-600 hover:bg-primary-50'
-                      }`}
-                    >
-                      {updatingId === user.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> :
-                        user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

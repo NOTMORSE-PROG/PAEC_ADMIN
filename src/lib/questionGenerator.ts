@@ -48,7 +48,6 @@ interface AnalysisInput {
 
 export interface ReadbackCandidate {
   category: 'readback'
-  difficulty: 'easy' | 'medium' | 'hard'
   question_data: {
     atcInstruction: string
     incorrectReadback: string
@@ -60,7 +59,6 @@ export interface ReadbackCandidate {
 
 export interface ScenarioCandidate {
   category: 'scenario'
-  difficulty: 'easy' | 'medium' | 'hard'
   question_data: {
     callSign: string
     flightPhase: string
@@ -75,7 +73,6 @@ export interface ScenarioCandidate {
 
 export interface JumbledCandidate {
   category: 'jumbled'
-  difficulty: 'easy' | 'medium' | 'hard'
   question_data: {
     instruction: string
     correctOrder: string[]
@@ -85,7 +82,6 @@ export interface JumbledCandidate {
 
 export interface PronunciationCandidate {
   category: 'pronunciation'
-  difficulty: 'easy' | 'medium' | 'hard'
   question_data: {
     type: string
     display: string
@@ -246,7 +242,6 @@ export function generateReadbackCandidates(analysis: AnalysisInput): ReadbackCan
     seenTexts.push(pilotLine.text)
     candidates.push({
       category: 'readback',
-      difficulty: error.category === 'number' ? 'easy' : 'medium',
       question_data: {
         atcInstruction: atcLine?.text ?? '',
         incorrectReadback: pilotLine.text,
@@ -330,7 +325,6 @@ export function generateScenarioCandidates(analysis: AnalysisInput): ScenarioCan
     seenTexts.push(atcLine.text)
     candidates.push({
       category: 'scenario',
-      difficulty: numHints >= 3 ? 'hard' : numHints >= 2 ? 'medium' : 'easy',
       question_data: {
         callSign,
         flightPhase,
@@ -381,7 +375,6 @@ export function generateJumbledCandidates(analysis: AnalysisInput): JumbledCandi
     seenTexts.push(line.text)
     candidates.push({
       category: 'jumbled',
-      difficulty: words.length > 9 ? 'hard' : words.length > 6 ? 'medium' : 'easy',
       question_data: {
         instruction: atcCtx
           ? `ATC says: "${atcCtx}"\nArrange the correct pilot readback for this ${clearanceType}:`
@@ -436,7 +429,6 @@ export function generatePronunciationCandidates(analysis: AnalysisInput): Pronun
     seen.add(digit)
     numberCandidates.push({
       category: 'pronunciation',
-      difficulty: 'easy',
       question_data: {
         type: 'number',
         display: digit,
@@ -456,7 +448,6 @@ export function generatePronunciationCandidates(analysis: AnalysisInput): Pronun
     seen.add(letter)
     letterCandidates.push({
       category: 'pronunciation',
-      difficulty: 'medium',
       question_data: {
         type: 'letter',
         display: letter,

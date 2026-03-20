@@ -27,7 +27,6 @@ function autoDetectErrors(incorrect: string, correct: string) {
 export default function NewQuestionPage() {
   const router = useRouter()
   const [category, setCategory] = useState<Category>('readback')
-  const [difficulty, setDifficulty] = useState('medium')
   const [isActive, setIsActive] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -111,7 +110,7 @@ export default function NewQuestionPage() {
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, difficulty, is_active: forceActive ?? isActive, question_data: buildQuestionData(), source: 'manual' }),
+        body: JSON.stringify({ category, is_active: forceActive ?? isActive, question_data: buildQuestionData(), source: 'manual' }),
       })
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Failed to save'); return }
       router.push('/dashboard/questions')
@@ -135,7 +134,7 @@ export default function NewQuestionPage() {
 
       <div className="card p-6 space-y-5">
         {/* Meta */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select value={category} onChange={e => setCategory(e.target.value as Category)} className="input-field">
@@ -143,14 +142,6 @@ export default function NewQuestionPage() {
               <option value="scenario">Scenario</option>
               <option value="jumbled">Jumbled</option>
               <option value="pronunciation">Pronunciation</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
-            <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="input-field">
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
             </select>
           </div>
           <div className="flex items-end pb-1">
@@ -187,7 +178,7 @@ export default function NewQuestionPage() {
 
         {category === 'scenario' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Call Sign <span className="text-red-500">*</span></label>
                 <input value={sc_callSign} onChange={e => setSc_callSign(e.target.value)} className="input-field" placeholder="PAL456" />
@@ -245,7 +236,7 @@ export default function NewQuestionPage() {
 
         {category === 'pronunciation' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                 <select value={pr_type} onChange={e => setPr_type(e.target.value)} className="input-field">
@@ -275,14 +266,14 @@ export default function NewQuestionPage() {
         )}
       </div>
 
-      <div className="flex gap-3">
-        <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button onClick={() => handleSave()} disabled={saving} className="btn-primary w-full sm:w-auto">
           {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : <><Save className="w-4 h-4 mr-2" />Save Question</>}
         </button>
-        <button onClick={() => handleSave(true)} disabled={saving} className="btn-secondary">
+        <button onClick={() => handleSave(true)} disabled={saving} className="btn-secondary w-full sm:w-auto">
           <CheckCircle className="w-4 h-4 mr-2" />Save & Publish
         </button>
-        <Link href="/dashboard/questions" className="btn-secondary">Cancel</Link>
+        <Link href="/dashboard/questions" className="btn-secondary w-full sm:w-auto text-center">Cancel</Link>
       </div>
     </div>
   )

@@ -7,15 +7,11 @@
 //  READBACK       — numbered blocks with labeled fields (ATC:, INCORRECT:, CORRECT:, …)
 //  SCENARIO       — numbered blocks with labeled fields (CALLSIGN:, PHASE:, ATC:, CORRECT:, …)
 //  JUMBLED        — numbered blocks with labeled fields (INSTRUCTION:, CORRECT:, TYPE:)
-//
-// All formats support an optional "DIFFICULTY: easy|medium|hard" header in the
-// first 5 lines of the document.
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedCandidate {
   category: 'scenario' | 'readback' | 'jumbled' | 'pronunciation'
-  difficulty: string
   question_data: Record<string, unknown>
   _selected: boolean
   _warnings: string[]
@@ -24,15 +20,12 @@ export interface ParsedCandidate {
 export interface ParseResult {
   questions: ParsedCandidate[]
   errors: string[]
-  difficulty: string
 }
 
 // ── Templates (downloadable samples per category) ─────────────────────────────
 
 export const PDF_TEMPLATES: Record<string, string> = {
-  pronunciation: `DIFFICULTY: medium
-
-1. What is the standard ICAO pronunciation for the number 9?
+  pronunciation: `1. What is the standard ICAO pronunciation for the number 9?
 a. Nine
 b. Niner
 c. Ny-nee
@@ -57,9 +50,7 @@ correct answer is b
 EXPLANATION: "Fife" is the ICAO standard to ensure the number is clearly understood over radio, particularly when the "v" sound may be distorted.
 `,
 
-  readback: `DIFFICULTY: medium
-
-1.
+  readback: `1.
 ATC: Philippine 101, climb and maintain flight level three five zero.
 INCORRECT: Climb flight level three five zero, Philippine 101.
 CORRECT: Climb and maintain flight level three five zero, Philippine 101.
@@ -81,9 +72,7 @@ ERRORS: number error
 EXPLANATION: Each digit of a squawk code must be read back individually. "Seven hundred" is not the correct readback for 7700.
 `,
 
-  scenario: `DIFFICULTY: medium
-
-1.
+  scenario: `1.
 CALLSIGN: Philippine 101
 PHASE: departure
 AIRCRAFT: A320
@@ -111,9 +100,7 @@ CORRECT: Taxi to gate charlie one via taxiway alpha, hold short of runway zero s
 HINTS: include full taxi route, include hold-short instruction, include callsign at the end
 `,
 
-  jumbled: `DIFFICULTY: easy
-
-1.
+  jumbled: `1.
 INSTRUCTION: Arrange these words in the correct order to form a standard landing clearance.
 CORRECT: Cleared to land runway two four Philippine 101
 TYPE: landing clearance
@@ -262,16 +249,6 @@ export function getQualityWarnings(
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
-function detectDifficulty(rawLines: string[]): string {
-  for (const line of rawLines.slice(0, 5)) {
-    const m = line.match(/^difficulty\s*[:=]\s*(\w+)/i)
-    if (m && ['easy', 'medium', 'hard'].includes(m[1].toLowerCase())) {
-      return m[1].toLowerCase()
-    }
-  }
-  return 'medium'
-}
-
 function splitIntoBlocks(rawLines: string[]): string[] {
   const fullText = rawLines.join('\n')
   return fullText
@@ -308,7 +285,6 @@ function extractField(blockLines: string[], ...labels: string[]): string {
 function parsePronunciationQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const difficulty = detectDifficulty(rawLines)
 
   // Separate answer-key section at the end
   const answerKey: Record<number, string> = {}
@@ -327,7 +303,7 @@ function parsePronunciationQuestions(text: string): ParseResult {
     errors.push(
       'No questions found. Each question must start with a number followed by "." or ")" — e.g. "1. What is..."'
     )
-    return { questions: [], errors, difficulty }
+    return { questions: [], errors }
   }
 
   const candidates: ParsedCandidate[] = []
@@ -397,7 +373,6 @@ function parsePronunciationQuestions(text: string): ParseResult {
 
     candidates.push({
       category: 'pronunciation',
-      difficulty,
       question_data: {
         type: 'question',
         display: questionText,
@@ -411,7 +386,7 @@ function parsePronunciationQuestions(text: string): ParseResult {
     })
   }
 
-  return { questions: candidates, errors, difficulty }
+  return { questions: candidates, errors }
 }
 
 function isAnswerLine(line: string): boolean {
@@ -437,14 +412,13 @@ function getPronunciationWarnings(
 function parseReadbackQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const difficulty = detectDifficulty(rawLines)
   const blocks = splitIntoBlocks(rawLines)
 
   if (blocks.length === 0) {
     errors.push(
       'No questions found. Each question must start with a number followed by "." or ")" on its own line — e.g. "1." or "1."'
     )
-    return { questions: [], errors, difficulty }
+    return { questions: [], errors }
   }
 
   const candidates: ParsedCandidate[] = []
@@ -481,14 +455,13 @@ function parseReadbackQuestions(text: string): ParseResult {
 
     candidates.push({
       category: 'readback',
-      difficulty,
       question_data: qd,
       _selected: blockErrors.length === 0,
       _warnings: getQualityWarnings('readback', qd),
     })
   }
 
-  return { questions: candidates, errors, difficulty }
+  return { questions: candidates, errors }
 }
 
 // ── Scenario parser (labeled fields) ─────────────────────────────────────────
@@ -496,14 +469,13 @@ function parseReadbackQuestions(text: string): ParseResult {
 function parseScenarioQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const difficulty = detectDifficulty(rawLines)
   const blocks = splitIntoBlocks(rawLines)
 
   if (blocks.length === 0) {
     errors.push(
       'No questions found. Each question must start with a number followed by "." or ")" on its own line.'
     )
-    return { questions: [], errors, difficulty }
+    return { questions: [], errors }
   }
 
   const candidates: ParsedCandidate[] = []
@@ -544,14 +516,13 @@ function parseScenarioQuestions(text: string): ParseResult {
 
     candidates.push({
       category: 'scenario',
-      difficulty,
       question_data: qd,
       _selected: blockErrors.length === 0,
       _warnings: getQualityWarnings('scenario', qd),
     })
   }
 
-  return { questions: candidates, errors, difficulty }
+  return { questions: candidates, errors }
 }
 
 // ── Jumbled parser (labeled fields) ──────────────────────────────────────────
@@ -559,14 +530,13 @@ function parseScenarioQuestions(text: string): ParseResult {
 function parseJumbledQuestions(text: string): ParseResult {
   const errors: string[] = []
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  const difficulty = detectDifficulty(rawLines)
   const blocks = splitIntoBlocks(rawLines)
 
   if (blocks.length === 0) {
     errors.push(
       'No questions found. Each question must start with a number followed by "." or ")" on its own line.'
     )
-    return { questions: [], errors, difficulty }
+    return { questions: [], errors }
   }
 
   const candidates: ParsedCandidate[] = []
@@ -596,12 +566,11 @@ function parseJumbledQuestions(text: string): ParseResult {
 
     candidates.push({
       category: 'jumbled',
-      difficulty,
       question_data: qd,
       _selected: blockErrors.length === 0,
       _warnings: getQualityWarnings('jumbled', qd),
     })
   }
 
-  return { questions: candidates, errors, difficulty }
+  return { questions: candidates, errors }
 }

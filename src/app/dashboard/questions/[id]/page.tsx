@@ -8,7 +8,6 @@ import Link from 'next/link'
 interface Question {
   id: string
   category: string
-  difficulty: string
   is_active: boolean
   source: string
   question_data: Record<string, unknown>
@@ -104,14 +103,11 @@ function ScenarioForm({ data, onChange }: { data: Record<string, unknown>; onCha
   const set = (key: string, val: unknown) => onChange({ ...data, [key]: val })
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Call Sign" value={data.callSign as string ?? ''} onChange={v => set('callSign', v)} />
         <Field label="Flight Phase" value={data.flightPhase as string ?? ''} onChange={v => set('flightPhase', v)} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Aircraft Type" value={data.aircraftType as string ?? ''} onChange={v => set('aircraftType', v)} />
-        <div />
-      </div>
+      <Field label="Aircraft Type" value={data.aircraftType as string ?? ''} onChange={v => set('aircraftType', v)} />
       <Field label="Situation (context shown to student)" value={data.situation as string ?? ''} onChange={v => set('situation', v)} multiline />
       <Field label="ATC Clearance" value={data.atcClearance as string ?? ''} onChange={v => set('atcClearance', v)} multiline />
       <Field label="Correct Response" value={data.correctResponse as string ?? ''} onChange={v => set('correctResponse', v)} multiline />
@@ -146,13 +142,13 @@ function PronunciationForm({ data, onChange }: { data: Record<string, unknown>; 
   const options = (data.options as string[]) ?? ['', '', '', '']
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Display (e.g. '9')" value={data.display as string ?? ''} onChange={v => set('display', v)} />
         <Field label="Correct Pronunciation" value={data.correctPronunciation as string ?? ''} onChange={v => set('correctPronunciation', v)} />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Options (4 choices)</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[0, 1, 2, 3].map(i => (
             <input key={i} type="text" value={options[i] ?? ''} onChange={e => { const o = [...options]; o[i] = e.target.value; set('options', o) }}
               className="input-field text-sm" placeholder={`Option ${i + 1}`} />
@@ -176,7 +172,6 @@ export default function EditQuestionPage() {
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState('')
-  const [difficulty, setDifficulty] = useState('medium')
   const [isActive, setIsActive] = useState(false)
   const [questionData, setQuestionData] = useState<Record<string, unknown>>({})
 
@@ -188,7 +183,6 @@ export default function EditQuestionPage() {
       .then(d => {
         if (d.question) {
           setQuestion(d.question)
-          setDifficulty(d.question.difficulty)
           setIsActive(d.question.is_active)
           setQuestionData(d.question.question_data)
         }
@@ -222,7 +216,7 @@ export default function EditQuestionPage() {
       const res = await fetch(`/api/questions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty, is_active: isActive, question_data: questionData }),
+        body: JSON.stringify({ is_active: isActive, question_data: questionData }),
       })
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Save failed'); return }
       showToast('Saved successfully')
@@ -261,21 +255,11 @@ export default function EditQuestionPage() {
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}
 
       <div className="card p-6 space-y-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
-            <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="input-field">
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-          <div className="flex items-end pb-1">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="rounded" />
-              <span className="text-sm font-medium text-gray-700">Published (visible to students)</span>
-            </label>
-          </div>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="rounded" />
+            <span className="text-sm font-medium text-gray-700">Published (visible to students)</span>
+          </label>
         </div>
 
         <hr className="border-gray-100" />
@@ -286,8 +270,8 @@ export default function EditQuestionPage() {
         {question.category === 'pronunciation' && <PronunciationForm data={questionData} onChange={setQuestionData} />}
       </div>
 
-      <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button onClick={handleSave} disabled={saving} className="btn-primary w-full sm:w-auto">
           {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : <><Save className="w-4 h-4 mr-2" />Save Changes</>}
         </button>
         <button onClick={async () => {
@@ -298,13 +282,13 @@ export default function EditQuestionPage() {
             const res = await fetch(`/api/questions/${id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ difficulty, is_active: next, question_data: questionData }),
+              body: JSON.stringify({ is_active: next, question_data: questionData }),
             })
             if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Save failed') }
             else showToast(next ? 'Published' : 'Unpublished')
           } catch { setError('Network error') }
           finally { setSaving(false) }
-        }} disabled={saving} className="btn-secondary">
+        }} disabled={saving} className="btn-secondary w-full sm:w-auto">
           {isActive ? <><XCircle className="w-4 h-4 mr-1" />Unpublish</> : <><CheckCircle className="w-4 h-4 mr-1" />Publish</>}
         </button>
       </div>
@@ -312,10 +296,10 @@ export default function EditQuestionPage() {
       <div className="card p-6 border-red-200 space-y-4">
         <h3 className="font-semibold text-red-700">Delete Question</h3>
         <p className="text-sm text-gray-600">This action is irreversible. Type <strong>delete</strong> to confirm.</p>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
             className="input-field flex-1" placeholder='Type "delete" to confirm' />
-          <button onClick={handleDelete} disabled={deleteConfirm !== 'delete' || deleting} className="btn-danger disabled:opacity-40">
+          <button onClick={handleDelete} disabled={deleteConfirm !== 'delete' || deleting} className="btn-danger disabled:opacity-40 w-full sm:w-auto">
             {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1" />}Delete
           </button>
         </div>

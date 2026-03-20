@@ -23,10 +23,9 @@ export async function POST(req: NextRequest) {
   }
 
   const created = await bulkCreateTrainingQuestions(
-    questions.map((q: { category: string; question_data: Record<string, unknown>; difficulty?: string; source_meta?: Record<string, unknown> }) => ({
+    questions.map((q: { category: string; question_data: Record<string, unknown>; source_meta?: Record<string, unknown> }) => ({
       category: q.category,
       question_data: q.question_data,
-      difficulty: q.difficulty ?? 'medium',
       is_active: true,
       source: 'analysis',
       source_meta: q.source_meta,

@@ -35,12 +35,12 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { category, question_data, difficulty = 'medium', is_active = false, source = 'manual', source_meta } = body
+  const { category, question_data, is_active = false, source = 'manual', source_meta } = body
 
   if (!category || !question_data) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
 
   const question = await createTrainingQuestion({
-    category, question_data, difficulty, is_active, source,
+    category, question_data, is_active, source,
     source_meta, created_by: session.user?.id,
   })
 

@@ -8,7 +8,6 @@ import { Plus, Search, Filter, CheckCircle, FileText, Trash2, Edit2, Loader2, Bo
 interface Question {
   id: string
   category: string
-  difficulty: string
   is_active: boolean
   source: string
   created_at: string
@@ -114,15 +113,18 @@ function QuestionsPageInner() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Questions</h1>
           <p className="text-sm text-gray-500">{total} total questions</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/questions/from-analysis" className="btn-secondary">Generate from Analysis</Link>
-          <Link href="/dashboard/questions/import-pdf" className="btn-secondary"><FileUp className="w-4 h-4 mr-1" />Import PDF</Link>
-          <Link href="/dashboard/questions/new" className="btn-primary"><Plus className="w-4 h-4 mr-1" />New Question</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/dashboard/questions/from-analysis" className="btn-secondary">
+            <span className="hidden sm:inline">Generate from Analysis</span>
+            <span className="sm:hidden">From Analysis</span>
+          </Link>
+          <Link href="/dashboard/questions/import-pdf" className="btn-secondary"><FileUp className="w-4 h-4 mr-1" /><span className="hidden sm:inline">Import PDF</span><span className="sm:hidden">PDF</span></Link>
+          <Link href="/dashboard/questions/new" className="btn-primary"><Plus className="w-4 h-4 mr-1" /><span className="hidden sm:inline">New Question</span><span className="sm:hidden">New</span></Link>
         </div>
       </div>
 
@@ -131,7 +133,7 @@ function QuestionsPageInner() {
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search questions..."
-            className="input-field pl-9 w-60" />
+            className="input-field pl-9 w-full sm:w-60" />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-400" />
@@ -150,7 +152,7 @@ function QuestionsPageInner() {
 
       {/* Bulk actions */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-primary-50 border border-primary-200 rounded-xl">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-primary-50 border border-primary-200 rounded-xl">
           <span className="text-sm font-medium text-primary-700">{selected.size} selected</span>
           <button onClick={() => bulkPublish(true)} disabled={bulkLoading} className="btn-primary text-xs px-3 py-1.5">
             {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />}Publish
@@ -175,7 +177,8 @@ function QuestionsPageInner() {
             <p className="text-sm mt-1">Try adjusting your filters or create a new question</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="w-10 px-4 py-3">
@@ -184,7 +187,6 @@ function QuestionsPageInner() {
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Question</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-28">Category</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Difficulty</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-20">Source</th>
                 <th className="w-24 px-4 py-3"></th>
@@ -201,9 +203,6 @@ function QuestionsPageInner() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="badge bg-gray-100 text-gray-700 capitalize">{q.category}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`badge capitalize ${q.difficulty === 'easy' ? 'bg-green-100 text-green-700' : q.difficulty === 'hard' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{q.difficulty}</span>
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => toggleActive(q)}
@@ -228,6 +227,7 @@ function QuestionsPageInner() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         {/* Pagination */}

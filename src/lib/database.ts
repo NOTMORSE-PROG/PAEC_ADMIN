@@ -11,7 +11,6 @@ export interface TrainingQuestion {
   id: string
   category: string
   question_data: Record<string, unknown>
-  difficulty: string
   is_active: boolean
   source: string
   source_meta: Record<string, unknown> | null
@@ -71,17 +70,16 @@ export async function getTrainingQuestionById(id: string) {
 export async function createTrainingQuestion(data: {
   category: string
   question_data: Record<string, unknown>
-  difficulty: string
   is_active: boolean
   source: string
   source_meta?: Record<string, unknown>
   created_by?: string
 }) {
   const rows = await query<TrainingQuestion>(
-    `INSERT INTO training_questions (category, question_data, difficulty, is_active, source, source_meta, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO training_questions (category, question_data, is_active, source, source_meta, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [data.category, JSON.stringify(data.question_data), data.difficulty, data.is_active, data.source, data.source_meta ? JSON.stringify(data.source_meta) : null, data.created_by ?? null]
+    [data.category, JSON.stringify(data.question_data), data.is_active, data.source, data.source_meta ? JSON.stringify(data.source_meta) : null, data.created_by ?? null]
   )
   return rows[0]
 }
@@ -89,7 +87,6 @@ export async function createTrainingQuestion(data: {
 export async function bulkCreateTrainingQuestions(questions: Array<{
   category: string
   question_data: Record<string, unknown>
-  difficulty: string
   is_active: boolean
   source: string
   source_meta?: Record<string, unknown>
@@ -102,14 +99,12 @@ export async function bulkCreateTrainingQuestions(questions: Array<{
 
 export async function updateTrainingQuestion(id: string, data: {
   question_data?: Record<string, unknown>
-  difficulty?: string
   is_active?: boolean
 }) {
   const sets: string[] = []
   const params: unknown[] = []
 
   if (data.question_data !== undefined) { sets.push(`question_data = $${params.length + 1}`); params.push(JSON.stringify(data.question_data)) }
-  if (data.difficulty !== undefined) { sets.push(`difficulty = $${params.length + 1}`); params.push(data.difficulty) }
   if (data.is_active !== undefined) { sets.push(`is_active = $${params.length + 1}`); params.push(data.is_active) }
 
   if (sets.length === 0) return null

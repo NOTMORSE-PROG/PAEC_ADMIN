@@ -28,11 +28,9 @@ export async function POST(req: NextRequest) {
       batch.map((q: {
         category: string
         question_data: Record<string, unknown>
-        difficulty?: string
       }) => ({
         category: q.category,
         question_data: q.question_data,
-        difficulty: q.difficulty ?? 'medium',
         is_active: true,
         source: 'pdf_import',
         source_meta: { filename: filename ?? 'unknown', importedAt: new Date().toISOString() },

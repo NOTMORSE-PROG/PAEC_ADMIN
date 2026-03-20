@@ -9,7 +9,6 @@ type Step = 'upload' | 'review' | 'done'
 
 interface Candidate {
   category: string
-  difficulty: string
   question_data: Record<string, unknown>
   _selected: boolean
   _duplicate?: { score: number; matchId: string; matchPreview: string }
@@ -55,7 +54,7 @@ function ScenarioEditForm({ data, onChange }: { data: Record<string, unknown>; o
   const hints = (data.hints as string[]) ?? []
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Call Sign" value={data.callSign as string ?? ''} onChange={v => set('callSign', v)} />
         <Field label="Flight Phase" value={data.flightPhase as string ?? ''} onChange={v => set('flightPhase', v)} />
       </div>
@@ -100,7 +99,7 @@ function PronunciationEditForm({ data, onChange }: { data: Record<string, unknow
       </div>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">Options (4 choices)</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[0, 1, 2, 3].map(i => (
             <input
               key={i}
@@ -220,7 +219,7 @@ export default function FromAnalysisPage() {
         return
       }
 
-      const rawCandidates: Candidate[] = data.candidates.map((c: { category: string; difficulty: string; question_data: Record<string, unknown> }) => ({
+      const rawCandidates: Candidate[] = data.candidates.map((c: { category: string; question_data: Record<string, unknown> }) => ({
         ...c, _selected: true, _warnings: [],
       }))
       // Quality pass
@@ -277,7 +276,6 @@ export default function FromAnalysisPage() {
           questions: selected.map(c => ({
             category: c.category,
             question_data: c.question_data,
-            difficulty: c.difficulty,
             source_meta: { generatedFrom: category, fileName: csvFile?.name },
           })),
         }),
@@ -318,7 +316,7 @@ export default function FromAnalysisPage() {
           <div className="card p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Training Category</label>
-              <select value={category} onChange={e => setCategory(e.target.value)} className="input-field w-56">
+              <select value={category} onChange={e => setCategory(e.target.value)} className="input-field w-full sm:w-56">
                 {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
               </select>
               <p className="text-xs text-gray-400 mt-1">The system will generate questions appropriate for this category.</p>
@@ -363,11 +361,11 @@ export default function FromAnalysisPage() {
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button onClick={handleGenerate} disabled={!csvFile || generating} className="btn-primary">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button onClick={handleGenerate} disabled={!csvFile || generating} className="btn-primary w-full sm:w-auto">
                 {generating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : <><Upload className="w-4 h-4 mr-2" />Generate Candidates</>}
               </button>
-              <Link href="/dashboard/questions" className="btn-secondary">Cancel</Link>
+              <Link href="/dashboard/questions" className="btn-secondary w-full sm:w-auto text-center">Cancel</Link>
             </div>
           </div>
 
@@ -388,7 +386,7 @@ export default function FromAnalysisPage() {
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-sm text-gray-600">
               <strong>{candidates.filter(c => c._selected).length}</strong> of <strong>{candidates.length}</strong> candidates selected
             </p>
@@ -406,7 +404,6 @@ export default function FromAnalysisPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className="badge bg-primary-100 text-primary-700 capitalize">{c.category}</span>
-                      <span className={`badge capitalize ${c.difficulty === 'easy' ? 'bg-green-100 text-green-700' : c.difficulty === 'hard' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.difficulty}</span>
                       {c._duplicate && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
                           <AlertTriangle className="w-3 h-3" />
@@ -450,11 +447,11 @@ export default function FromAnalysisPage() {
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button onClick={handleApprove} disabled={approving || candidates.filter(c => c._selected).length === 0} className="btn-primary">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={handleApprove} disabled={approving || candidates.filter(c => c._selected).length === 0} className="btn-primary w-full sm:w-auto">
               {approving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Approving...</> : <><CheckCircle className="w-4 h-4 mr-2" />Approve Selected → Add to Pool</>}
             </button>
-            <button onClick={() => setStep('upload')} className="btn-secondary">Back</button>
+            <button onClick={() => setStep('upload')} className="btn-secondary w-full sm:w-auto">Back</button>
           </div>
         </div>
       )}

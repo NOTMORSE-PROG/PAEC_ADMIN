@@ -96,7 +96,7 @@ function ScenarioEditForm({ data, onChange }: { data: Record<string, unknown>; o
   const hints = (data.hints as string[]) ?? []
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Call Sign" value={data.callSign as string ?? ''} onChange={v => set('callSign', v)} />
         <Field label="Flight Phase" value={data.flightPhase as string ?? ''} onChange={v => set('flightPhase', v)} />
       </div>
@@ -168,7 +168,7 @@ function PronunciationQuestionEditForm({
         onChange={v => onChange({ ...data, display: v })}
         multiline
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {[0, 1, 2, 3].map(i => (
           <Field key={i} label={`Choice ${LABELS[i]}`} value={options[i] ?? ''} onChange={v => setOption(i, v)} />
         ))}
@@ -178,7 +178,7 @@ function PronunciationQuestionEditForm({
         <select
           value={correctIdx >= 0 ? correctIdx : ''}
           onChange={e => setCorrectByIndex(Number(e.target.value))}
-          className="input-field w-64 text-sm"
+          className="input-field w-full sm:w-64 text-sm"
         >
           <option value="" disabled>Select correct choice</option>
           {[0, 1, 2, 3].map(i => (
@@ -241,7 +241,6 @@ export default function ImportPdfPage() {
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
   const [parseErrors, setParseErrors] = useState<string[]>([])
-  const [difficulty, setDifficulty] = useState('medium')
   const [candidates, setCandidates] = useState<ParsedCandidate[]>([])
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
   const [importing, setImporting] = useState(false)
@@ -284,7 +283,6 @@ export default function ImportPdfPage() {
         return
       }
 
-      setDifficulty(result.difficulty)
       setParseErrors(result.errors)
       setCandidates(result.questions)
       setStep('review')
@@ -328,7 +326,6 @@ export default function ImportPdfPage() {
           questions: selected.map(c => ({
             category: c.category,
             question_data: c.question_data,
-            difficulty: c.difficulty,
           })),
         }),
       })
@@ -437,13 +434,13 @@ export default function ImportPdfPage() {
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button onClick={handleExtract} disabled={!pdfFile || extracting} className="btn-primary">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button onClick={handleExtract} disabled={!pdfFile || extracting} className="btn-primary w-full sm:w-auto">
                 {extracting
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Extracting...</>
                   : <><Upload className="w-4 h-4 mr-2" />Extract Questions</>}
               </button>
-              <Link href="/dashboard/questions" className="btn-secondary">Cancel</Link>
+              <Link href="/dashboard/questions" className="btn-secondary w-full sm:w-auto text-center">Cancel</Link>
             </div>
           </div>
 
@@ -467,7 +464,6 @@ export default function ImportPdfPage() {
               {FORMAT_GUIDES[category]}
             </pre>
             <div className="text-xs text-blue-600 space-y-1">
-              <p><strong>All formats:</strong> Add <code className="bg-white/60 px-1 rounded">DIFFICULTY: easy</code> / <code className="bg-white/60 px-1 rounded">medium</code> / <code className="bg-white/60 px-1 rounded">hard</code> on the first line to set difficulty for all questions in the file.</p>
               {category === 'pronunciation' && (
                 <p>Questions are numbered <strong>1.</strong> / <strong>1)</strong>, choices labeled <strong>a–d</strong>, correct answer on its own line: <strong>correct answer is b</strong>.</p>
               )}
@@ -498,7 +494,7 @@ export default function ImportPdfPage() {
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
               <strong>{selectedCount}</strong> of <strong>{candidates.length}</strong> selected
-              <span className="ml-2 text-gray-400">· {difficulty} difficulty · {category} pool</span>
+              <span className="ml-2 text-gray-400">· {category} pool</span>
             </p>
             <div className="flex gap-2">
               <button onClick={() => setCandidates(prev => prev.map(c => ({ ...c, _selected: true })))} className="btn-secondary text-xs px-3 py-1.5">Select All</button>
@@ -514,7 +510,6 @@ export default function ImportPdfPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className={`badge ${CATEGORY_COLORS[c.category as Category]}`}>{c.category}</span>
-                      <span className={`badge capitalize ${c.difficulty === 'easy' ? 'bg-green-100 text-green-700' : c.difficulty === 'hard' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.difficulty}</span>
                       {(c._warnings ?? []).map(w => (
                         <span key={w} className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">{w}</span>
                       ))}
@@ -547,13 +542,13 @@ export default function ImportPdfPage() {
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button onClick={handleImport} disabled={importing || selectedCount === 0} className="btn-primary">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={handleImport} disabled={importing || selectedCount === 0} className="btn-primary w-full sm:w-auto">
               {importing
                 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing...</>
                 : <><CheckCircle className="w-4 h-4 mr-2" />Import {selectedCount} Selected</>}
             </button>
-            <button onClick={() => setStep('upload')} className="btn-secondary">Back</button>
+            <button onClick={() => setStep('upload')} className="btn-secondary w-full sm:w-auto">Back</button>
           </div>
         </div>
       )}

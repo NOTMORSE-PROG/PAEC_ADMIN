@@ -47,14 +47,14 @@ export default async function OverviewPage() {
             const pct = total > 0 ? Math.round(active / total * 100) : 0
             const ready = active >= 10
             return (
-              <div key={cat} className="flex items-center justify-between px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <span className="capitalize font-medium text-gray-900 w-28">{cat}</span>
+              <div key={cat} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-6 py-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="capitalize font-medium text-gray-900 min-w-[7rem]">{cat}</span>
                   <span className={`badge ${ready ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                     {ready ? `${active} published` : `${active} published — needs ${10 - active} more`}
                   </span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 sm:ml-auto flex-wrap">
                   <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div className="h-full bg-primary-500 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
@@ -93,7 +93,7 @@ export default async function OverviewPage() {
           </div>
           <div>
             <div className="font-medium text-gray-900">Import from PDF</div>
-            <div className="text-sm text-gray-500">Upload Q&amp;A PDF → identification questions</div>
+            <div className="text-sm text-gray-500">Upload Q&amp;A PDF → add to training pool</div>
           </div>
         </Link>
       </div>
