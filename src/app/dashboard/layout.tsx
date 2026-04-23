@@ -4,12 +4,13 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, BookOpen, Users, LogOut, Shield, Settings, Menu, X } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Users, LogOut, Shield, Settings, Menu, X, FlaskConical } from 'lucide-react'
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/dashboard/questions', label: 'Questions', icon: BookOpen, exact: false },
   { href: '/dashboard/users', label: 'Users', icon: Users, exact: false },
+  { href: '/dashboard/scorer-test', label: 'Scorer Test', icon: FlaskConical, exact: false },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings, exact: false },
 ]
 
