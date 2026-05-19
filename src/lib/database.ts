@@ -139,6 +139,33 @@ export async function getUsers(limit = 50, offset = 0) {
   )
 }
 
+export async function getUserById(userId: string): Promise<User | null> {
+  const rows = await query<User>('SELECT * FROM users WHERE id = $1', [userId])
+  return rows[0] ?? null
+}
+
+export interface UserSession {
+  id: string
+  category: string
+  question_ids: string[]
+  answers: Record<string, string>
+  question_scores: Record<string, number>
+  score: number
+  completed_at: string
+  started_at: string
+}
+
+export async function getUserSessions(userId: string): Promise<UserSession[]> {
+  return query<UserSession>(
+    `SELECT id, category, question_ids, answers, question_scores, score, completed_at, started_at
+     FROM training_sessions
+     WHERE user_id = $1 AND completed = true
+     ORDER BY completed_at DESC
+     LIMIT 100`,
+    [userId]
+  )
+}
+
 export async function setUserRole(userId: string, role: string) {
   await query('UPDATE users SET role = $1 WHERE id = $2', [role, userId])
 }

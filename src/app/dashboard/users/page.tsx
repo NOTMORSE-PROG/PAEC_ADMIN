@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Shield, User, Loader2, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
 
 interface UserRow {
   id: string
@@ -56,6 +57,7 @@ export default function UsersPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Role</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Sessions</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase w-28">Joined</th>
+                <th className="px-5 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -79,6 +81,11 @@ export default function UsersPage() {
                   <td className="px-5 py-4 text-sm text-gray-600">{user.session_count}</td>
                   <td className="px-5 py-4 text-sm text-gray-500">
                     {new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td className="px-5 py-4">
+                    <Link href={`/dashboard/users/${user.id}`} className="text-xs font-medium text-primary-600 hover:text-primary-800 hover:underline">
+                      View
+                    </Link>
                   </td>
                 </tr>
               ))}
